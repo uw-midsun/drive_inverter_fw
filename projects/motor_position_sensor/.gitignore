@@ -1,13 +1,40 @@
 # Build output
 Debug/
 Release/
+build/
 
 # STM32CubeIDE backup files
 Core/Inc/Backup/
 Core/Src/Backup/
 
-# IDE settings
-.settings/
+# CubeMX internal bookkeeping
+.mxproject
 
 # Debug launch configurations
 *.launch
+
+# Eclipse/CDT workspace index
+.metadata/
+
+# Object files and linker output
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# CubeMX backup
+*.bak
+
+# CMake
+CMakeLists.txt
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+*.cmake
+
+# OS junk
+.DS_Store
+Thumbs.db

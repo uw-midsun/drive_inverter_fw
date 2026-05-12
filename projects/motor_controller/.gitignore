@@ -1,11 +1,40 @@
-/.mxproject
-/CMakePresets.json
-/CMakeLists.txt
-/startup_stm32g474xx.s
-/STM32G474XX_FLASH.ld
-/Drivers/
-/cmake/
-/build/
-/Core/Src/Backup/
-/Core/Inc/Backup/
-/.idea
+# Build output
+Debug/
+Release/
+build/
+
+# STM32CubeIDE backup files
+Core/Inc/Backup/
+Core/Src/Backup/
+
+# CubeMX internal bookkeeping
+.mxproject
+
+# Debug launch configurations
+*.launch
+
+# Eclipse/CDT workspace index
+.metadata/
+
+# Object files and linker output
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# CubeMX backup
+*.bak
+
+# CMake
+CMakeLists.txt
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+*.cmake
+
+# OS junk
+.DS_Store
+Thumbs.db
