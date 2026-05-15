@@ -33,6 +33,10 @@ impl CanConfig {
         if base_mc == base_dc {
             return Err("MC and DC base addresses must differ".into());
         }
-        Ok(Self { iface: iface.to_string(), base_mc, base_dc })
+        Ok(Self {
+            iface: iface.to_string(),
+            base_mc,
+            base_dc,
+        })
     }
 }

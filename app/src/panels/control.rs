@@ -70,7 +70,10 @@ pub fn show(ui: &mut egui::Ui, shared: &SharedData, state: &mut ControlState, ba
     ui.separator();
 
     let mut active = state.heartbeat.is_some();
-    if ui.checkbox(&mut active, "Auto-send heartbeat (100 ms)").changed() {
+    if ui
+        .checkbox(&mut active, "Auto-send heartbeat (100 ms)")
+        .changed()
+    {
         state.heartbeat = if active {
             Some(Instant::now() - Duration::from_millis(101))
         } else {

@@ -23,9 +23,16 @@ impl GuiSnapshot {
         Self::default()
     }
 
-    pub fn apply_frame(&mut self, entry: &crate::can::FrameEntry, base_mc: u32, max_history: usize) {
+    pub fn apply_frame(
+        &mut self,
+        entry: &crate::can::FrameEntry,
+        base_mc: u32,
+        max_history: usize,
+    ) {
         let ts = entry.received_at.timestamp_millis() as f64 / 1_000.0;
-        for (sig, value) in crate::comms_schema::extract_signal_values(entry.id, &entry.data, base_mc) {
+        for (sig, value) in
+            crate::comms_schema::extract_signal_values(entry.id, &entry.data, base_mc)
+        {
             let hist = &mut self.signal_history[sig as usize];
             hist.push_back((ts, value as f64));
             if hist.len() > max_history {

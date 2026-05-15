@@ -42,7 +42,11 @@ impl GuiData {
         let base_mc = load_hex(cc.storage, STORAGE_KEY_BASE_MC, comms_schema::BASE_MC);
         let base_dc = load_hex(cc.storage, STORAGE_KEY_BASE_DC, comms_schema::BASE_DC);
 
-        shared.set_can_config(CanConfig { iface: iface.clone(), base_mc, base_dc });
+        shared.set_can_config(CanConfig {
+            iface: iface.clone(),
+            base_mc,
+            base_dc,
+        });
         cc.egui_ctx.set_visuals(make_visuals(is_dark));
 
         Self {
@@ -97,7 +101,10 @@ impl GuiData {
                 }
 
                 let is_fs = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
-                if ui.button(if is_fs { "Window" } else { "Fullscreen" }).clicked() {
+                if ui
+                    .button(if is_fs { "Window" } else { "Fullscreen" })
+                    .clicked()
+                {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fs));
                 }
 
@@ -123,9 +130,9 @@ impl GuiData {
                         self.worker_handle = None;
                         self.worker_started = true;
                         let (cmd_rx, event_tx, config) = self.shared.worker_endpoints();
-                        self.worker_handle = Some(
-                            std::thread::spawn(move || can_run(cmd_rx, event_tx, config)),
-                        );
+                        self.worker_handle = Some(std::thread::spawn(move || {
+                            can_run(cmd_rx, event_tx, config)
+                        }));
                     } else {
                         self.last_worker_status =
                             Some("Previous worker still stopping, trying again".to_string());
@@ -168,7 +175,12 @@ impl eframe::App for GuiData {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.drain_events();
         self.top_bar(ctx);
-        panels::settings::show(ctx, &self.shared, &mut self.settings, &mut self.show_settings);
+        panels::settings::show(
+            ctx,
+            &self.shared,
+            &mut self.settings,
+            &mut self.show_settings,
+        );
 
         let cfg = self.shared.get_can_config();
 
@@ -196,7 +208,11 @@ impl eframe::App for GuiData {
                 });
         }
 
-        ctx.request_repaint_after(Duration::from_millis(if self.worker_started { 16 } else { 200 }));
+        ctx.request_repaint_after(Duration::from_millis(if self.worker_started {
+            16
+        } else {
+            200
+        }));
     }
 }
 
@@ -215,5 +231,9 @@ fn load_bool(storage: Option<&dyn eframe::Storage>, key: &str, default: bool) ->
 }
 
 fn make_visuals(dark: bool) -> egui::Visuals {
-    if dark { egui::Visuals::dark() } else { egui::Visuals::light() }
+    if dark {
+        egui::Visuals::dark()
+    } else {
+        egui::Visuals::light()
+    }
 }

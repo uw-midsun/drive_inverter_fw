@@ -7,14 +7,9 @@ use egui_plot::{Line, Plot, PlotPoints};
 use crate::comms_schema::Signal;
 use crate::shared::GuiSnapshot;
 
+#[derive(Default)]
 pub struct GraphState {
     pub selected: HashSet<Signal>,
-}
-
-impl Default for GraphState {
-    fn default() -> Self {
-        Self { selected: HashSet::new() }
-    }
 }
 
 pub fn show(ui: &mut egui::Ui, snapshot: &Arc<GuiSnapshot>, state: &mut GraphState) {
@@ -46,8 +41,7 @@ pub fn show(ui: &mut egui::Ui, snapshot: &Arc<GuiSnapshot>, state: &mut GraphSta
                 for &sig in state.selected.iter() {
                     let history = &snapshot.signal_history[sig as usize];
                     if !history.is_empty() {
-                        let points: PlotPoints =
-                            history.iter().map(|&(t, v)| [t, v]).collect();
+                        let points: PlotPoints = history.iter().map(|&(t, v)| [t, v]).collect();
                         plot_ui.line(Line::new(points).name(sig.name()));
                     }
                 }

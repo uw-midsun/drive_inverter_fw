@@ -85,4 +85,3 @@ pub fn show(ctx: &egui::Context, shared: &SharedData, state: &mut SettingsState,
             );
         });
 }
-

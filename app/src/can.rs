@@ -38,7 +38,9 @@ impl WorkerState {
 pub fn run(cmd_rx: Receiver<Command>, event_tx: Sender<Event>, config: Arc<Mutex<CanConfig>>) {
     use std::io::ErrorKind;
 
-    let mut state = WorkerState::Connecting { retry_after: Instant::now() };
+    let mut state = WorkerState::Connecting {
+        retry_after: Instant::now(),
+    };
     let mut log_file: Option<BufWriter<File>> = None;
 
     loop {
@@ -55,7 +57,6 @@ pub fn run(cmd_rx: Receiver<Command>, event_tx: Sender<Event>, config: Arc<Mutex
             WorkerState::Connecting { retry_after } => {
                 let remaining = retry_after.saturating_duration_since(Instant::now());
                 if !remaining.is_zero() {
-
                     // Block until retry time or a command arrives
                     match cmd_rx.recv_timeout(remaining) {
                         Ok(Command::StopWorker) => return,
@@ -73,49 +74,53 @@ pub fn run(cmd_rx: Receiver<Command>, event_tx: Sender<Event>, config: Arc<Mutex
                 match CanSocket::open(&iface) {
                     Ok(socket) => {
                         let _ = socket.set_read_timeout(Some(Duration::from_millis(200)));
-                        let _ = event_tx.try_send(Event::WorkerStatus(format!("Connected to {iface}")));
+                        let _ =
+                            event_tx.try_send(Event::WorkerStatus(format!("Connected to {iface}")));
                         state = WorkerState::Running { socket };
                     }
                     Err(e) => {
-                        let _ = event_tx.try_send(Event::WorkerStatus(format!("Cannot open {iface}: {e}")));
+                        let _ = event_tx
+                            .try_send(Event::WorkerStatus(format!("Cannot open {iface}: {e}")));
                         *retry_after = Instant::now() + Duration::from_secs(2);
                     }
                 }
             }
 
-            WorkerState::Running { socket } => {
-                match socket.read_frame() {
-                    Ok(frame) => {
-                        let raw_id: u32 = match frame.id() {
-                            socketcan::Id::Standard(sid) => sid.as_raw() as u32,
-                            socketcan::Id::Extended(eid) => eid.as_raw(),
-                        };
-                        let bytes = frame.data();
-                        let len = bytes.len().min(8);
-                        let mut data = [0u8; 8];
-                        data[..len].copy_from_slice(&bytes[..len]);
-                        let received_at = Utc::now();
+            WorkerState::Running { socket } => match socket.read_frame() {
+                Ok(frame) => {
+                    let raw_id: u32 = match frame.id() {
+                        socketcan::Id::Standard(sid) => sid.as_raw() as u32,
+                        socketcan::Id::Extended(eid) => eid.as_raw(),
+                    };
+                    let bytes = frame.data();
+                    let len = bytes.len().min(8);
+                    let mut data = [0u8; 8];
+                    data[..len].copy_from_slice(&bytes[..len]);
+                    let received_at = Utc::now();
 
-                        if let Some(ref mut w) = log_file {
-                            let ts = received_at.timestamp_millis() as f64 / 1_000.0;
-                            write!(w, "{:.3},{:#010X}", ts, raw_id).ok();
-                            for b in &data {
-                                write!(w, " {:02X}", b).ok();
-                            }
-                            writeln!(w).ok();
+                    if let Some(ref mut w) = log_file {
+                        let ts = received_at.timestamp_millis() as f64 / 1_000.0;
+                        write!(w, "{:.3},{:#010X}", ts, raw_id).ok();
+                        for b in &data {
+                            write!(w, " {:02X}", b).ok();
                         }
+                        writeln!(w).ok();
+                    }
 
-                        let _ = event_tx.try_send(Event::FrameReceived(FrameEntry { id: raw_id, data, received_at }));
-                    }
-                    Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {}
-                    Err(e) => {
-                        let _ = event_tx.try_send(Event::Error(format!("CAN read error: {e}")));
-                        state = WorkerState::Connecting {
-                            retry_after: Instant::now() + Duration::from_secs(2),
-                        };
-                    }
+                    let _ = event_tx.try_send(Event::FrameReceived(FrameEntry {
+                        id: raw_id,
+                        data,
+                        received_at,
+                    }));
                 }
-            }
+                Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {}
+                Err(e) => {
+                    let _ = event_tx.try_send(Event::Error(format!("CAN read error: {e}")));
+                    state = WorkerState::Connecting {
+                        retry_after: Instant::now() + Duration::from_secs(2),
+                    };
+                }
+            },
         }
     }
 }
@@ -139,7 +144,8 @@ fn handle_command(
                 match StandardId::new(id as u16) {
                     Some(sid) => socketcan::Id::Standard(sid),
                     None => {
-                        let _ = event_tx.try_send(Event::Error(format!("Invalid standard CAN ID: {:#X}", id)));
+                        let _ = event_tx
+                            .try_send(Event::Error(format!("Invalid standard CAN ID: {:#X}", id)));
                         return;
                     }
                 }
@@ -147,7 +153,8 @@ fn handle_command(
                 match ExtendedId::new(id) {
                     Some(eid) => socketcan::Id::Extended(eid),
                     None => {
-                        let _ = event_tx.try_send(Event::Error(format!("Invalid extended CAN ID: {:#X}", id)));
+                        let _ = event_tx
+                            .try_send(Event::Error(format!("Invalid extended CAN ID: {:#X}", id)));
                         return;
                     }
                 }
@@ -166,12 +173,10 @@ fn handle_command(
         }
 
         Command::StartLog { path } => {
-            match File::create(&path)
-                .map(BufWriter::new)
-                .and_then(|mut w| {
-                    writeln!(w, "timestamp_s,can_id,data")?;
-                    Ok(w)
-                }) {
+            match File::create(&path).map(BufWriter::new).and_then(|mut w| {
+                writeln!(w, "timestamp_s,can_id,data")?;
+                Ok(w)
+            }) {
                 Ok(w) => {
                     *log_file = Some(w);
                     let _ = event_tx.try_send(Event::Log(format!("Logging to {}", path.display())));

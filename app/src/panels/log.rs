@@ -4,15 +4,10 @@ use eframe::egui;
 
 use crate::shared::{Command, SharedData};
 
+#[derive(Default)]
 pub struct LogState {
     pub path: String,
     pub active: bool,
-}
-
-impl Default for LogState {
-    fn default() -> Self {
-        Self { path: String::new(), active: false }
-    }
 }
 
 pub fn show(ui: &mut egui::Ui, shared: &SharedData, state: &mut LogState) {
