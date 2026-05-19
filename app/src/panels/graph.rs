@@ -1,3 +1,8 @@
+//! Signal selection and time series plot panel
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use std::collections::HashSet;
 use std::sync::Arc;
 

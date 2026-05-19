@@ -1,0 +1,83 @@
+meta:
+  base_mc_default: 0x400
+  base_dc_default: 0x500
+
+# Frames transmitted by the drive inverter
+# Frames without a signals list are tracked as raw frames but not graphed
+ws22:
+  frames:
+    - name: bus
+      offset: 0x02
+      signals:
+        - { name: bus_voltage,   unit: V   }
+        - { name: bus_current,   unit: A   }
+    - name: velocity
+      offset: 0x03
+      signals:
+        - { name: velocity_rpm,  unit: rpm }
+        - { name: velocity_ms,   unit: m/s }
+    - name: phase_current
+      offset: 0x04
+      signals:
+        - { name: phase_ib,      unit: A   }
+        - { name: phase_ic,      unit: A   }
+    - name: motor_voltage
+      offset: 0x05
+      signals:
+        - { name: motor_vd,      unit: V   }
+        - { name: motor_vq,      unit: V   }
+    - name: motor_current
+      offset: 0x06
+      signals:
+        - { name: motor_id,      unit: A   }
+        - { name: motor_iq,      unit: A   }
+    - name: motor_bemf
+      offset: 0x07
+      signals:
+        - { name: bemf_vd,       unit: V   }
+        - { name: bemf_vq,       unit: V   }
+    - name: rail_15v_1v65
+      offset: 0x08
+    - name: rail_2v5_1v2
+      offset: 0x09
+    - name: fan_speed
+      offset: 0x0A
+      signals:
+        - { name: fan_rpm,       unit: rpm }
+    - name: temp_sink_motor
+      offset: 0x0B
+      signals:
+        - { name: temp_heatsink, unit: degC }
+        - { name: temp_motor,    unit: degC }
+    - name: temp_dsp
+      offset: 0x0C
+      signals:
+        - { name: temp_dsp,      unit: degC }
+    - name: odometer
+      offset: 0x0E
+      signals:
+        - { name: odometer_m,    unit: m  }
+        - { name: amp_hours,     unit: Ah }
+
+# Frames transmitted by driver controls (app → drive inverter)
+# encode lists the signals packed into the frame, lo then hi
+dc:
+  frames:
+    - name: drive
+      offset: 0x01
+      encode:
+        - { name: velocity_rpm,   unit: rpm }
+        - { name: current_limit,  unit: pu  }
+
+debug:
+  frames:
+    - name: observer_debug
+      offset: 0x10
+      signals:
+        - { name: observer_position, unit: rad }
+        - { name: encoder_position,  unit: rad }
+    - name: foc_debug
+      offset: 0x11
+      signals:
+        - { name: position_error,    unit: rad }
+        - { name: el_angle,          unit: rad }

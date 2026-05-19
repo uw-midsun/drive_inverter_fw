@@ -1,3 +1,8 @@
+//! CAN interface and base address configuration
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use crate::comms_schema;
 
 #[derive(Clone, Debug)]

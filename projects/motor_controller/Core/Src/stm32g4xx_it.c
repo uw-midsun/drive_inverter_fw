@@ -22,9 +22,7 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdlib.h>
-#include "foc.h"
-#include "motor_interface.h"
+#include "app.h"
 #include "stm32g4xx_hal_hrtim.h"
 #include "stm32g4xx_ll_dma.h"
 #include "stm32g4xx_ll_gpio.h"
@@ -38,7 +36,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define UART_RX_BUF_SIZE 64
 
 /* USER CODE END PD */
 
@@ -49,9 +46,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-static char rxbuf[UART_RX_BUF_SIZE];
-static uint8_t idx = 0;
-volatile float commanded_position_deg = 0.0f;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,14 +56,7 @@ volatile float commanded_position_deg = 0.0f;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void process_uart_command(const char *cmd)
-{
-  if (cmd[0] == 'p' || cmd[0] == 'P')
-  {
-    commanded_position_deg = atof(&cmd[1]);
-    return;
-  }
-}
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -223,16 +211,7 @@ void HRTIM1_Master_IRQHandler(void)
   /* USER CODE BEGIN HRTIM1_Master_IRQn 0 */
   LL_GPIO_SetOutputPin(GPO1_GPIO_Port, GPO1_Pin);
   __HAL_HRTIM_MASTER_CLEAR_IT(&hhrtim1, HRTIM_MASTER_IT_MUPD);
-  if (mc.mode == MC_FOC)
-  {
-    float enc_el = motor_interface_get_position_rad();
-    foc_step(CONTROL_DT, enc_el);
-  } else if (mc.mode == MC_OPEN_LOOP)
-  {
-    mc.el_angle = motor_interface_get_position_rad();
-    mc.cmd.uq = 3.0f;
-    open_loop_step();
-  }
+  app_control_isr();
   LL_GPIO_ResetOutputPin(GPO1_GPIO_Port, GPO1_Pin);
 
   /* USER CODE END HRTIM1_Master_IRQn 0 */

@@ -36,6 +36,10 @@ extern HRTIM_HandleTypeDef hhrtim1;
 
 /* USER CODE BEGIN Private defines */
 
+#define HRTIM_FREQ_HZ   20753UL          /* ~20.75 kHz */
+#define HRTIM_CLOCK_HZ  2720000000UL     /* fHRTIM * MUL16 */
+#define HRTIM_PERIOD    ((HRTIM_CLOCK_HZ / (HRTIM_FREQ_HZ * 2UL)) - 1UL)
+
 /* USER CODE END Private defines */
 
 void MX_HRTIM1_Init(void);

@@ -1,3 +1,8 @@
+//! SocketCAN worker thread: connect, receive, transmit and log frames
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use chrono::{DateTime, Utc};
 use std::fs::File;
 use std::io::{BufWriter, Write};

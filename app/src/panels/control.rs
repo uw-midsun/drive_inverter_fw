@@ -1,3 +1,8 @@
+//! Motor control panel: drive command sliders and heartbeat
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use std::time::{Duration, Instant};
 
 use eframe::egui;

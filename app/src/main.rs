@@ -1,3 +1,8 @@
+//! Entry point for the drive inverter GUI
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 mod can;
 mod comms_schema;
 mod config;

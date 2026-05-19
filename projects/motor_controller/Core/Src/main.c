@@ -30,12 +30,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "calibration.h"
-#include "retarget.h"
-#include "motor_interface.h"
-#include "foc.h"
-#include "stm32g4xx_hal_hrtim.h"
-#include "stm32g4xx_ll_gpio.h"
+#include "app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,21 +62,6 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void start_hrtim(void)
-{
-  HAL_HRTIM_WaveformCounterStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
-  HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_B | HRTIM_TIMERID_TIMER_E);
-  HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TE1);
-}
-
-void start_adc(void)
-{
-  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-  HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)current_ref_buf, 2);
-  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)current_buf, 2);
-}
 /* USER CODE END 0 */
 
 /**
@@ -127,62 +107,18 @@ int main(void)
   MX_UART4_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
-  motor_interface_init();
-  start_adc();
-  mc_init();
-  start_hrtim();
-  LL_GPIO_SetOutputPin(PHASE_EN_GPIO_Port, PHASE_EN_Pin);
-  HAL_Delay(1);
-  mc.cmd.iq_ref = 0.5f;
-  mc.mode = MC_DISABLED;
-
-  // motor_interface_set_reverse(1);
-
-  // calibrate(1.6, 30);
-  // calibrate_clear();
-  // calibrate_offset(1.6, 256 ,500);
-  // motor_interface_set_offset(12329);
-  // motor_interface_save_calibration();
-
+  app_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    printf("EL_Pos: %5u EL_Rad: %.2f Raw: %5u \r\n",
-      motor_interface_get_position(),
-      motor_interface_get_position_rad(),
-      motor_interface_get_position_raw()
-      );
-    //
-    // printf("Ia: %.3f Ib: %.3f Ic: %.3f \r\n",
-    //   phase_currents.i_a,
-    //   phase_currents.i_b,
-    //   phase_currents.i_c
-    //   );
+    app_step();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    float U_mag = sqrtf(mc.dq.id*mc.dq.id + mc.dq.iq*mc.dq.iq);
-    printf("UD: %3.2f ID: %3.2f UQ: %3.2f IQ: %3.2f UMAG: %3.2f | TH: %3.2f W: %3.1f G: %3.2f\r\n",
-           mc.cmd.ud, mc.dq.id, mc.cmd.uq, mc.dq.iq, U_mag,
-           mc.observer.theta_est, mc.observer.omega_est, mc.observer.correction_gain);
-
-
-    // el_angle = el_angle + angled;
-    // if (el_angle > PI2_F)
-    // {
-    //   el_angle -= PI2_F;
-    // }
-    // LL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-    // foc_cmd.ud = 1.0f;
-    // el_angle = motor_interface_get_position_rad();
-    // el_angle = 0;
-    // OpenLoopStep();
-
-    // LL_GPIO_TogglePin(GPO1_GPIO_Port, GPO1_Pin);
-    HAL_Delay(100);
+    __WFI();   /* app_step() self-paces; sleep until the next interrupt */
   }
   /* USER CODE END 3 */
 }
@@ -234,11 +170,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-// {
-//   motor_interface_process_rx_callback(huart);
-// }
-
 
 /* USER CODE END 4 */
 

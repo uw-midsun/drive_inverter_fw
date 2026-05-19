@@ -1,3 +1,8 @@
+//! Shared state, command and event channels between the GUI and worker
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -43,7 +48,7 @@ impl GuiSnapshot {
     }
 }
 
-/// Commands sent GUI → worker
+/// Commands sent GUI to worker
 #[derive(Debug, Clone)]
 pub enum Command {
     SendFrame { id: u32, data: [u8; 8] },
@@ -52,7 +57,7 @@ pub enum Command {
     StopWorker,
 }
 
-/// Events sent worker → GUI
+/// Events sent worker to GUI
 #[derive(Debug, Clone)]
 pub enum Event {
     FrameReceived(FrameEntry),

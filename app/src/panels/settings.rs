@@ -1,3 +1,8 @@
+//! CAN interface and base address settings window
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use eframe::egui;
 
 use crate::config::CanConfig;

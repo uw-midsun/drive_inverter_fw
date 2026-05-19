@@ -1,3 +1,8 @@
+//! CAN log recording control panel
+//!
+//! - **Author:** Midnight Sun Team #24
+//! - **Date:** 2026-05-18
+
 use std::path::PathBuf;
 
 use eframe::egui;

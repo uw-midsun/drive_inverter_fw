@@ -29,11 +29,10 @@ Core/Src/Backup/
 *.bak
 
 # CMake
-CMakeLists.txt
 CMakeFiles/
 cmake_install.cmake
 CMakeCache.txt
-*.cmake
+build/CMakeLists.txt
 
 # OS junk
 .DS_Store
