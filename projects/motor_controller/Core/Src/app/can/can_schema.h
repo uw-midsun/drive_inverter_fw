@@ -17,7 +17,7 @@
 /* Inter-component Headers */
 
 /* Intra-component Headers */
-#include "can_bus.h" /* can_msg_t, can_bus_transmit */
+#include "can_bus.h"   /* can_msg_t, can_bus_transmit */
 
 /**
  * @defgroup CAN
@@ -26,42 +26,42 @@
  */
 
 /* Base addresses */
-#define CAN_BASE_MC_DEFAULT 0x400U
-#define CAN_BASE_DC_DEFAULT 0x500U
+#define CAN_BASE_MC_DEFAULT  0x400U
+#define CAN_BASE_DC_DEFAULT  0x500U
 
 /* MC frame ID macros (drive inverter to CAN bus) */
-#define CAN_BUS_OFFSET 0x02U
-#define CAN_BUS_ID(mc) ((mc) + CAN_BUS_OFFSET)
-#define CAN_VELOCITY_OFFSET 0x03U
-#define CAN_VELOCITY_ID(mc) ((mc) + CAN_VELOCITY_OFFSET)
-#define CAN_PHASE_CURRENT_OFFSET 0x04U
-#define CAN_PHASE_CURRENT_ID(mc) ((mc) + CAN_PHASE_CURRENT_OFFSET)
-#define CAN_MOTOR_VOLTAGE_OFFSET 0x05U
-#define CAN_MOTOR_VOLTAGE_ID(mc) ((mc) + CAN_MOTOR_VOLTAGE_OFFSET)
-#define CAN_MOTOR_CURRENT_OFFSET 0x06U
-#define CAN_MOTOR_CURRENT_ID(mc) ((mc) + CAN_MOTOR_CURRENT_OFFSET)
-#define CAN_MOTOR_BEMF_OFFSET 0x07U
-#define CAN_MOTOR_BEMF_ID(mc) ((mc) + CAN_MOTOR_BEMF_OFFSET)
-#define CAN_RAIL_15V_1V65_OFFSET 0x08U
-#define CAN_RAIL_15V_1V65_ID(mc) ((mc) + CAN_RAIL_15V_1V65_OFFSET)
-#define CAN_RAIL_2V5_1V2_OFFSET 0x09U
-#define CAN_RAIL_2V5_1V2_ID(mc) ((mc) + CAN_RAIL_2V5_1V2_OFFSET)
-#define CAN_FAN_SPEED_OFFSET 0x0AU
-#define CAN_FAN_SPEED_ID(mc) ((mc) + CAN_FAN_SPEED_OFFSET)
-#define CAN_TEMP_SINK_MOTOR_OFFSET 0x0BU
-#define CAN_TEMP_SINK_MOTOR_ID(mc) ((mc) + CAN_TEMP_SINK_MOTOR_OFFSET)
-#define CAN_TEMP_DSP_OFFSET 0x0CU
-#define CAN_TEMP_DSP_ID(mc) ((mc) + CAN_TEMP_DSP_OFFSET)
-#define CAN_ODOMETER_OFFSET 0x0EU
-#define CAN_ODOMETER_ID(mc) ((mc) + CAN_ODOMETER_OFFSET)
-#define CAN_OBSERVER_DEBUG_OFFSET 0x10U
-#define CAN_OBSERVER_DEBUG_ID(mc) ((mc) + CAN_OBSERVER_DEBUG_OFFSET)
-#define CAN_FOC_DEBUG_OFFSET 0x11U
-#define CAN_FOC_DEBUG_ID(mc) ((mc) + CAN_FOC_DEBUG_OFFSET)
+#define CAN_BUS_OFFSET  0x02U
+#define CAN_BUS_ID(mc)  ((mc) + CAN_BUS_OFFSET)
+#define CAN_VELOCITY_OFFSET  0x03U
+#define CAN_VELOCITY_ID(mc)  ((mc) + CAN_VELOCITY_OFFSET)
+#define CAN_PHASE_CURRENT_OFFSET  0x04U
+#define CAN_PHASE_CURRENT_ID(mc)  ((mc) + CAN_PHASE_CURRENT_OFFSET)
+#define CAN_MOTOR_VOLTAGE_OFFSET  0x05U
+#define CAN_MOTOR_VOLTAGE_ID(mc)  ((mc) + CAN_MOTOR_VOLTAGE_OFFSET)
+#define CAN_MOTOR_CURRENT_OFFSET  0x06U
+#define CAN_MOTOR_CURRENT_ID(mc)  ((mc) + CAN_MOTOR_CURRENT_OFFSET)
+#define CAN_MOTOR_BEMF_OFFSET  0x07U
+#define CAN_MOTOR_BEMF_ID(mc)  ((mc) + CAN_MOTOR_BEMF_OFFSET)
+#define CAN_RAIL_15V_1V65_OFFSET  0x08U
+#define CAN_RAIL_15V_1V65_ID(mc)  ((mc) + CAN_RAIL_15V_1V65_OFFSET)
+#define CAN_RAIL_2V5_1V2_OFFSET  0x09U
+#define CAN_RAIL_2V5_1V2_ID(mc)  ((mc) + CAN_RAIL_2V5_1V2_OFFSET)
+#define CAN_FAN_SPEED_OFFSET  0x0AU
+#define CAN_FAN_SPEED_ID(mc)  ((mc) + CAN_FAN_SPEED_OFFSET)
+#define CAN_TEMP_SINK_MOTOR_OFFSET  0x0BU
+#define CAN_TEMP_SINK_MOTOR_ID(mc)  ((mc) + CAN_TEMP_SINK_MOTOR_OFFSET)
+#define CAN_TEMP_DSP_OFFSET  0x0CU
+#define CAN_TEMP_DSP_ID(mc)  ((mc) + CAN_TEMP_DSP_OFFSET)
+#define CAN_ODOMETER_OFFSET  0x0EU
+#define CAN_ODOMETER_ID(mc)  ((mc) + CAN_ODOMETER_OFFSET)
+#define CAN_OBSERVER_DEBUG_OFFSET  0x10U
+#define CAN_OBSERVER_DEBUG_ID(mc)  ((mc) + CAN_OBSERVER_DEBUG_OFFSET)
+#define CAN_FOC_DEBUG_OFFSET  0x11U
+#define CAN_FOC_DEBUG_ID(mc)  ((mc) + CAN_FOC_DEBUG_OFFSET)
 
 /* DC frame ID macros (driver controls to drive inverter) */
-#define CAN_DRIVE_OFFSET 0x01U
-#define CAN_DRIVE_ID(dc) ((dc) + CAN_DRIVE_OFFSET)
+#define CAN_DRIVE_OFFSET  0x01U
+#define CAN_DRIVE_ID(dc)  ((dc) + CAN_DRIVE_OFFSET)
 
 /*
  * Transmit helpers
@@ -71,53 +71,77 @@
  *   can_pack_bus(buf, vbus, ibus);
  *   can_bus_transmit(CAN_BUS_ID(base_mc), buf, 8U);
  */
-static inline void can_pack_bus(uint8_t out[8], float bus_voltage, float bus_current) {
-  memcpy(&out[0], &bus_voltage, 4U);
-  memcpy(&out[4], &bus_current, 4U);
+static inline void can_pack_bus(
+    uint8_t out[8], float bus_voltage, float bus_current)
+{
+    memcpy(&out[0], &bus_voltage, 4U);
+    memcpy(&out[4], &bus_current, 4U);
 }
-static inline void can_pack_velocity(uint8_t out[8], float velocity_rpm, float velocity_ms) {
-  memcpy(&out[0], &velocity_rpm, 4U);
-  memcpy(&out[4], &velocity_ms, 4U);
+static inline void can_pack_velocity(
+    uint8_t out[8], float velocity_rpm, float velocity_ms)
+{
+    memcpy(&out[0], &velocity_rpm, 4U);
+    memcpy(&out[4], &velocity_ms, 4U);
 }
-static inline void can_pack_phase_current(uint8_t out[8], float phase_ib, float phase_ic) {
-  memcpy(&out[0], &phase_ib, 4U);
-  memcpy(&out[4], &phase_ic, 4U);
+static inline void can_pack_phase_current(
+    uint8_t out[8], float phase_ib, float phase_ic)
+{
+    memcpy(&out[0], &phase_ib, 4U);
+    memcpy(&out[4], &phase_ic, 4U);
 }
-static inline void can_pack_motor_voltage(uint8_t out[8], float motor_vd, float motor_vq) {
-  memcpy(&out[0], &motor_vd, 4U);
-  memcpy(&out[4], &motor_vq, 4U);
+static inline void can_pack_motor_voltage(
+    uint8_t out[8], float motor_vd, float motor_vq)
+{
+    memcpy(&out[0], &motor_vd, 4U);
+    memcpy(&out[4], &motor_vq, 4U);
 }
-static inline void can_pack_motor_current(uint8_t out[8], float motor_id, float motor_iq) {
-  memcpy(&out[0], &motor_id, 4U);
-  memcpy(&out[4], &motor_iq, 4U);
+static inline void can_pack_motor_current(
+    uint8_t out[8], float motor_id, float motor_iq)
+{
+    memcpy(&out[0], &motor_id, 4U);
+    memcpy(&out[4], &motor_iq, 4U);
 }
-static inline void can_pack_motor_bemf(uint8_t out[8], float bemf_vd, float bemf_vq) {
-  memcpy(&out[0], &bemf_vd, 4U);
-  memcpy(&out[4], &bemf_vq, 4U);
+static inline void can_pack_motor_bemf(
+    uint8_t out[8], float bemf_vd, float bemf_vq)
+{
+    memcpy(&out[0], &bemf_vd, 4U);
+    memcpy(&out[4], &bemf_vq, 4U);
 }
-static inline void can_pack_fan_speed(uint8_t out[8], float fan_rpm) {
-  memcpy(&out[0], &fan_rpm, 4U);
-  memset(&out[4], 0U, 4U);
+static inline void can_pack_fan_speed(
+    uint8_t out[8], float fan_rpm)
+{
+    memcpy(&out[0], &fan_rpm, 4U);
+    memset(&out[4], 0U, 4U);
 }
-static inline void can_pack_temp_sink_motor(uint8_t out[8], float temp_heatsink, float temp_motor) {
-  memcpy(&out[0], &temp_heatsink, 4U);
-  memcpy(&out[4], &temp_motor, 4U);
+static inline void can_pack_temp_sink_motor(
+    uint8_t out[8], float temp_heatsink, float temp_motor)
+{
+    memcpy(&out[0], &temp_heatsink, 4U);
+    memcpy(&out[4], &temp_motor, 4U);
 }
-static inline void can_pack_temp_dsp(uint8_t out[8], float temp_dsp) {
-  memcpy(&out[0], &temp_dsp, 4U);
-  memset(&out[4], 0U, 4U);
+static inline void can_pack_temp_dsp(
+    uint8_t out[8], float temp_dsp)
+{
+    memcpy(&out[0], &temp_dsp, 4U);
+    memset(&out[4], 0U, 4U);
 }
-static inline void can_pack_odometer(uint8_t out[8], float odometer_m, float amp_hours) {
-  memcpy(&out[0], &odometer_m, 4U);
-  memcpy(&out[4], &amp_hours, 4U);
+static inline void can_pack_odometer(
+    uint8_t out[8], float odometer_m, float amp_hours)
+{
+    memcpy(&out[0], &odometer_m, 4U);
+    memcpy(&out[4], &amp_hours, 4U);
 }
-static inline void can_pack_observer_debug(uint8_t out[8], float observer_position, float encoder_position) {
-  memcpy(&out[0], &observer_position, 4U);
-  memcpy(&out[4], &encoder_position, 4U);
+static inline void can_pack_observer_debug(
+    uint8_t out[8], float observer_position, float encoder_position)
+{
+    memcpy(&out[0], &observer_position, 4U);
+    memcpy(&out[4], &encoder_position, 4U);
 }
-static inline void can_pack_foc_debug(uint8_t out[8], float position_error, float el_angle) {
-  memcpy(&out[0], &position_error, 4U);
-  memcpy(&out[4], &el_angle, 4U);
+static inline void can_pack_foc_debug(
+    uint8_t out[8], float position_error, float el_angle)
+{
+    memcpy(&out[0], &position_error, 4U);
+    memcpy(&out[4], &el_angle, 4U);
 }
 
 /*
@@ -126,84 +150,88 @@ static inline void can_pack_foc_debug(uint8_t out[8], float position_error, floa
  *   float vel_rpm, cur_lim;
  *   can_unpack_drive(msg.data, &vel_rpm, &cur_lim);
  */
-static inline void can_unpack_drive(const uint8_t in[8], float *velocity_rpm, float *current_limit) {
-  memcpy(velocity_rpm, &in[0], 4U);
-  memcpy(current_limit, &in[4], 4U);
+static inline void can_unpack_drive(
+    const uint8_t in[8], float *velocity_rpm, float *current_limit)
+{
+    memcpy(velocity_rpm, &in[0], 4U);
+    memcpy(current_limit, &in[4], 4U);
 }
 
 typedef struct {
-  float bus_voltage;
-  float bus_current;
-  float velocity_rpm;
-  float velocity_ms;
-  float phase_ib;
-  float phase_ic;
-  float motor_vd;
-  float motor_vq;
-  float motor_id;
-  float motor_iq;
-  float bemf_vd;
-  float bemf_vq;
-  uint8_t rail_15v_1v65[8];
-  uint8_t rail_2v5_1v2[8];
-  float fan_rpm;
-  float temp_heatsink;
-  float temp_motor;
-  float temp_dsp;
-  float odometer_m;
-  float amp_hours;
-  float observer_position;
-  float encoder_position;
-  float position_error;
-  float el_angle;
+    float   bus_voltage;
+    float   bus_current;
+    float   velocity_rpm;
+    float   velocity_ms;
+    float   phase_ib;
+    float   phase_ic;
+    float   motor_vd;
+    float   motor_vq;
+    float   motor_id;
+    float   motor_iq;
+    float   bemf_vd;
+    float   bemf_vq;
+    uint8_t rail_15v_1v65[8];
+    uint8_t rail_2v5_1v2[8];
+    float   fan_rpm;
+    float   temp_heatsink;
+    float   temp_motor;
+    float   temp_dsp;
+    float   odometer_m;
+    float   amp_hours;
+    float   observer_position;
+    float   encoder_position;
+    float   position_error;
+    float   el_angle;
 } can_tx_t;
 
 typedef struct {
-  float velocity_rpm;
-  float current_limit;
-  bool fresh; /* set by can_rx_dispatch when a command frame arrived */
+    float   velocity_rpm;
+    float   current_limit;
+    bool    fresh;   /* set by can_rx_dispatch when a command frame arrived */
 } can_rx_t;
 
-static inline void can_tx_all(const can_tx_t *tx, uint32_t base_mc) {
-  uint8_t buf[8];
-  can_pack_bus(buf, tx->bus_voltage, tx->bus_current);
-  can_bus_transmit(CAN_BUS_ID(base_mc), buf, 8U);
-  can_pack_velocity(buf, tx->velocity_rpm, tx->velocity_ms);
-  can_bus_transmit(CAN_VELOCITY_ID(base_mc), buf, 8U);
-  can_pack_phase_current(buf, tx->phase_ib, tx->phase_ic);
-  can_bus_transmit(CAN_PHASE_CURRENT_ID(base_mc), buf, 8U);
-  can_pack_motor_voltage(buf, tx->motor_vd, tx->motor_vq);
-  can_bus_transmit(CAN_MOTOR_VOLTAGE_ID(base_mc), buf, 8U);
-  can_pack_motor_current(buf, tx->motor_id, tx->motor_iq);
-  can_bus_transmit(CAN_MOTOR_CURRENT_ID(base_mc), buf, 8U);
-  can_pack_motor_bemf(buf, tx->bemf_vd, tx->bemf_vq);
-  can_bus_transmit(CAN_MOTOR_BEMF_ID(base_mc), buf, 8U);
-  can_bus_transmit(CAN_RAIL_15V_1V65_ID(base_mc), tx->rail_15v_1v65, 8U);
-  can_bus_transmit(CAN_RAIL_2V5_1V2_ID(base_mc), tx->rail_2v5_1v2, 8U);
-  can_pack_fan_speed(buf, tx->fan_rpm);
-  can_bus_transmit(CAN_FAN_SPEED_ID(base_mc), buf, 8U);
-  can_pack_temp_sink_motor(buf, tx->temp_heatsink, tx->temp_motor);
-  can_bus_transmit(CAN_TEMP_SINK_MOTOR_ID(base_mc), buf, 8U);
-  can_pack_temp_dsp(buf, tx->temp_dsp);
-  can_bus_transmit(CAN_TEMP_DSP_ID(base_mc), buf, 8U);
-  can_pack_odometer(buf, tx->odometer_m, tx->amp_hours);
-  can_bus_transmit(CAN_ODOMETER_ID(base_mc), buf, 8U);
-  can_pack_observer_debug(buf, tx->observer_position, tx->encoder_position);
-  can_bus_transmit(CAN_OBSERVER_DEBUG_ID(base_mc), buf, 8U);
-  can_pack_foc_debug(buf, tx->position_error, tx->el_angle);
-  can_bus_transmit(CAN_FOC_DEBUG_ID(base_mc), buf, 8U);
+static inline void can_tx_all(const can_tx_t *tx, uint32_t base_mc)
+{
+    uint8_t buf[8];
+    can_pack_bus(buf, tx->bus_voltage, tx->bus_current);
+    can_bus_transmit(CAN_BUS_ID(base_mc), buf, 8U);
+    can_pack_velocity(buf, tx->velocity_rpm, tx->velocity_ms);
+    can_bus_transmit(CAN_VELOCITY_ID(base_mc), buf, 8U);
+    can_pack_phase_current(buf, tx->phase_ib, tx->phase_ic);
+    can_bus_transmit(CAN_PHASE_CURRENT_ID(base_mc), buf, 8U);
+    can_pack_motor_voltage(buf, tx->motor_vd, tx->motor_vq);
+    can_bus_transmit(CAN_MOTOR_VOLTAGE_ID(base_mc), buf, 8U);
+    can_pack_motor_current(buf, tx->motor_id, tx->motor_iq);
+    can_bus_transmit(CAN_MOTOR_CURRENT_ID(base_mc), buf, 8U);
+    can_pack_motor_bemf(buf, tx->bemf_vd, tx->bemf_vq);
+    can_bus_transmit(CAN_MOTOR_BEMF_ID(base_mc), buf, 8U);
+    can_bus_transmit(CAN_RAIL_15V_1V65_ID(base_mc), tx->rail_15v_1v65, 8U);
+    can_bus_transmit(CAN_RAIL_2V5_1V2_ID(base_mc), tx->rail_2v5_1v2, 8U);
+    can_pack_fan_speed(buf, tx->fan_rpm);
+    can_bus_transmit(CAN_FAN_SPEED_ID(base_mc), buf, 8U);
+    can_pack_temp_sink_motor(buf, tx->temp_heatsink, tx->temp_motor);
+    can_bus_transmit(CAN_TEMP_SINK_MOTOR_ID(base_mc), buf, 8U);
+    can_pack_temp_dsp(buf, tx->temp_dsp);
+    can_bus_transmit(CAN_TEMP_DSP_ID(base_mc), buf, 8U);
+    can_pack_odometer(buf, tx->odometer_m, tx->amp_hours);
+    can_bus_transmit(CAN_ODOMETER_ID(base_mc), buf, 8U);
+    can_pack_observer_debug(buf, tx->observer_position, tx->encoder_position);
+    can_bus_transmit(CAN_OBSERVER_DEBUG_ID(base_mc), buf, 8U);
+    can_pack_foc_debug(buf, tx->position_error, tx->el_angle);
+    can_bus_transmit(CAN_FOC_DEBUG_ID(base_mc), buf, 8U);
 }
 
-static inline bool can_rx_dispatch(can_rx_t *rx, const can_msg_t *msg, uint32_t base_dc) {
-  if (msg->len < 8U) {
+static inline bool can_rx_dispatch(can_rx_t *rx, const can_msg_t *msg, uint32_t base_dc)
+{
+    if (msg->len < 8U) {
+        return false;
+    }
+    if (msg->id == CAN_DRIVE_ID(base_dc)) {
+        can_unpack_drive(msg->data, &rx->velocity_rpm, &rx->current_limit);
+        rx->fresh = true;
+        return true;
+    }
     return false;
-  }
-  if (msg->id == CAN_DRIVE_ID(base_dc)) {
-    can_unpack_drive(msg->data, &rx->velocity_rpm, &rx->current_limit);
-    rx->fresh = true;
-    return true;
-  }
-  return false;
 }
 
 /** @} */

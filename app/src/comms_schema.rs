@@ -164,52 +164,21 @@ pub fn extract_signal_values(id: u32, data: &[u8; 8], base_mc: u32) -> Vec<(Sign
     }
     let (lo, hi) = f32_pair(data);
     match id - base_mc {
-        MC_BUS => vec![
-            (Signal::BusVoltage, lo),
-            (Signal::BusCurrent, hi),
-        ],
-        MC_VELOCITY => vec![
-            (Signal::VelocityRpm, lo),
-            (Signal::VelocityMs, hi),
-        ],
-        MC_PHASE_CURRENT => vec![
-            (Signal::PhaseIb, lo),
-            (Signal::PhaseIc, hi),
-        ],
-        MC_MOTOR_VOLTAGE => vec![
-            (Signal::MotorVd, lo),
-            (Signal::MotorVq, hi),
-        ],
-        MC_MOTOR_CURRENT => vec![
-            (Signal::MotorId, lo),
-            (Signal::MotorIq, hi),
-        ],
-        MC_MOTOR_BEMF => vec![
-            (Signal::BemfVd, lo),
-            (Signal::BemfVq, hi),
-        ],
-        MC_FAN_SPEED => vec![
-            (Signal::FanRpm, lo),
-        ],
-        MC_TEMP_SINK_MOTOR => vec![
-            (Signal::TempHeatsink, lo),
-            (Signal::TempMotor, hi),
-        ],
-        MC_TEMP_DSP => vec![
-            (Signal::TempDsp, lo),
-        ],
-        MC_ODOMETER => vec![
-            (Signal::OdometerM, lo),
-            (Signal::AmpHours, hi),
-        ],
+        MC_BUS => vec![(Signal::BusVoltage, lo), (Signal::BusCurrent, hi)],
+        MC_VELOCITY => vec![(Signal::VelocityRpm, lo), (Signal::VelocityMs, hi)],
+        MC_PHASE_CURRENT => vec![(Signal::PhaseIb, lo), (Signal::PhaseIc, hi)],
+        MC_MOTOR_VOLTAGE => vec![(Signal::MotorVd, lo), (Signal::MotorVq, hi)],
+        MC_MOTOR_CURRENT => vec![(Signal::MotorId, lo), (Signal::MotorIq, hi)],
+        MC_MOTOR_BEMF => vec![(Signal::BemfVd, lo), (Signal::BemfVq, hi)],
+        MC_FAN_SPEED => vec![(Signal::FanRpm, lo)],
+        MC_TEMP_SINK_MOTOR => vec![(Signal::TempHeatsink, lo), (Signal::TempMotor, hi)],
+        MC_TEMP_DSP => vec![(Signal::TempDsp, lo)],
+        MC_ODOMETER => vec![(Signal::OdometerM, lo), (Signal::AmpHours, hi)],
         MC_DEBUG_OBSERVER_DEBUG => vec![
             (Signal::ObserverPosition, lo),
             (Signal::EncoderPosition, hi),
         ],
-        MC_DEBUG_FOC_DEBUG => vec![
-            (Signal::PositionError, lo),
-            (Signal::ElAngle, hi),
-        ],
+        MC_DEBUG_FOC_DEBUG => vec![(Signal::PositionError, lo), (Signal::ElAngle, hi)],
         _ => vec![],
     }
 }

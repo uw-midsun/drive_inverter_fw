@@ -5,7 +5,7 @@ Usage:
     python3 autogen/generate.py
 """
 
-import sys
+import subprocess
 import yaml
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
@@ -89,8 +89,11 @@ def main() -> None:
         ("can_schema.h.jinja",    OUT_H),
     ]:
         text = render(template, ctx)
-        out_path.resolve().write_text(text)
-        print(f"wrote {out_path.resolve()}")
+        resolved = out_path.resolve()
+        resolved.write_text(text)
+        if resolved.suffix == ".rs":
+            subprocess.run(["rustfmt", str(resolved)], check=True)
+        print(f"wrote {resolved}")
 
 
 if __name__ == "__main__":
