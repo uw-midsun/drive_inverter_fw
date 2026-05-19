@@ -132,7 +132,6 @@ impl GuiData {
                         .unwrap_or(true);
 
                     if prev_finished {
-                        self.worker_handle = None;
                         self.worker_started = true;
                         let (cmd_rx, event_tx, config) = self.shared.worker_endpoints();
                         self.worker_handle = Some(std::thread::spawn(move || {
