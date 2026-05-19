@@ -27,9 +27,17 @@
 
 #define ENCODER_BITS 14                     /**< Encoder resolution in bits */
 #define ENCODER_COUNTS (1U << ENCODER_BITS) /**< Counts per mechanical revolution */
-#define ENCODER_MASK (ENCODER_COUNTS - 1U)  /**< Wrap mask for encoder counts */
-#define WS22_DMA_BUF_SIZE 128               /**< UART DMA ring size, power of 2 */
-#define LUT_SIZE 64                         /**< Encoder linearization LUT entries */
+#define ENCODER_MASK                                            \
+  (ENCODER_COUNTS - 1U)       /**< Wrap mask for encoder counts \
+                               */
+#define WS22_DMA_BUF_SIZE 128 /**< UART DMA ring size, power of 2 */
+
+#define LUT_BITS 6                                    /**< Encoder linearization LUT size in bits */
+#define LUT_SIZE (1 << LUT_BITS)                      /**< Encoder linearization LUT entries */
+#define LUT_INDEX_MASK (LUT_SIZE - 1U)                /**< Wrap mask for the LUT bin index */
+#define LUT_INTERP_SHIFT (ENCODER_BITS - LUT_BITS)    /**< Raw counts to LUT bin shift */
+#define LUT_FRAC_MASK ((1U << LUT_INTERP_SHIFT) - 1U) /**< Sub bin interpolation fraction mask */
+
 #define CAL_SAMPLES (LUT_SIZE * POLE_PAIRS) /**< Calibration sweep sample count */
 #define CALIB_FLASH_ADDR 0x0807F800         /**< Last flash page on the G474RE */
 

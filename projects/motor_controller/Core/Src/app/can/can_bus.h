@@ -25,6 +25,7 @@
 
 #define CAN_RX_BUF_SIZE 32U /**< RX ring buffer depth, power of 2 */
 #define CAN_TX_BUF_SIZE 32U /**< TX ring buffer depth, power of 2 */
+#define CAN_MAX_PAYLOAD 8U  /**< Classic CAN maximum payload (bytes) */
 
 /**
  * @brief   CAN base address configuration
@@ -38,13 +39,14 @@ typedef struct {
  * @brief   Single CAN frame
  */
 typedef struct {
-  uint32_t id;     /**< Standard frame identifier */
-  uint8_t data[8]; /**< Frame payload */
-  uint8_t len;     /**< Payload length in bytes */
+  uint32_t id;                   /**< Standard frame identifier */
+  uint8_t data[CAN_MAX_PAYLOAD]; /**< Frame payload */
+  uint8_t len;                   /**< Payload length in bytes */
 } can_msg_t;
 
 /**
- * @brief   Initialize FDCAN2, configure filters, start the peripheral and enable RX IRQ
+ * @brief   Initialize FDCAN2, configure filters, start the peripheral and
+ * enable RX IRQ
  * @param   cfg Pointer to the base address configuration
  */
 void can_bus_init(const can_bus_config_t *cfg);
@@ -59,7 +61,8 @@ void can_bus_init(const can_bus_config_t *cfg);
 bool can_bus_transmit(uint32_t id, const uint8_t *data, uint8_t len);
 
 /**
- * @brief   Drain the software TX ring into the hardware FIFO while slots are free
+ * @brief   Drain the software TX ring into the hardware FIFO while slots are
+ * free
  */
 void can_bus_run(void);
 

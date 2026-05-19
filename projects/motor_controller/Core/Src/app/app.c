@@ -28,9 +28,13 @@
  * @{
  */
 
-#define DRIVE_WATCHDOG_MS 300U /* fault if no drive frame within this window (we expect ~100ms, allow ~3 misses) */
-#define STATUS_TX_MS 100U      /* CAN status broadcast period (~10 Hz) */
-#define MC_MAX_CURRENT_A 10.0f /* maps drive current_limit [0,1] pu to iq_ref (A) */
+#define DRIVE_WATCHDOG_MS                                                                       \
+  300U                         /**< Fault if no drive frame within this window (~3 missed 100ms \
+                                  frames) */
+#define STATUS_TX_MS 100U      /**< CAN status broadcast period (~10 Hz) */
+#define MC_MAX_CURRENT_A 10.0f /**< Maps drive current_limit [0,1] pu onto iq_ref (A) */
+#define PHASE_EN_SETTLE_MS 1U  /**< Gate driver enable settle delay (ms) */
+#define OPEN_LOOP_UQ_V 3.0f    /**< Fixed q axis voltage used in open loop mode (V) */
 
 /* All app owned state in one place */
 typedef struct {
@@ -49,8 +53,8 @@ static drive_inverter_state_t s_drive_inverter; /* zero init: unsourced tx field
 static void app_start_adc(void) {
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t *)current_ref_buf, 2);
-  HAL_ADC_Start_DMA(&hadc2, (uint32_t *)current_buf, 2);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t *)phase_current_ref_adc, ADC_CURRENT_COUNT);
+  HAL_ADC_Start_DMA(&hadc2, (uint32_t *)phase_current_adc, ADC_CURRENT_COUNT);
 }
 
 static void app_start_hrtim(void) {
@@ -67,7 +71,7 @@ void app_init(void) {
   can_bus_init(&s_can_cfg);
 
   LL_GPIO_SetOutputPin(PHASE_EN_GPIO_Port, PHASE_EN_Pin);
-  HAL_Delay(1);
+  HAL_Delay(PHASE_EN_SETTLE_MS);
 
   mc.mode = MC_DISABLED;
   s_drive_inverter.fsm = APP_IDLE;
@@ -160,7 +164,7 @@ void app_control_isr(void) {
     foc_step(CONTROL_DT, motor_interface_get_position_rad());
   } else if (mc.mode == MC_OPEN_LOOP) {
     mc.el_angle = motor_interface_get_position_rad();
-    mc.cmd.uq = 3.0f;
+    mc.cmd.uq = OPEN_LOOP_UQ_V;
     foc_open_loop_step();
   }
 }

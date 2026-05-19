@@ -40,6 +40,9 @@
 #define CAN_RX_BUF_MASK (CAN_RX_BUF_SIZE - 1U)
 #define CAN_TX_BUF_MASK (CAN_TX_BUF_SIZE - 1U)
 
+#define CAN_DLC_LEN_SHIFT 16U    /**< FDCAN DataLength byte count is in bits [19:16] */
+#define CAN_DC_FRAME_RANGE 0x10U /**< Identifier window above base_dc treated as driver controls */
+
 /* All driver state in one place:
  *   rx_* : the ISR is the producer, the main loop the consumer, so volatile
  *   tx_* : both ends run in the main context, so plain
@@ -60,12 +63,11 @@ typedef struct {
 
 static can_bus_t s_can_bus;
 
-/* FDCAN DataLength field encodes the byte count in bits [19:16] */
 static inline uint32_t can_bus_len_to_dlc(uint8_t len) {
-  return (uint32_t)len << 16U;
+  return (uint32_t)len << CAN_DLC_LEN_SHIFT;
 }
 static inline uint8_t can_bus_dlc_to_len(uint32_t dlc) {
-  return (uint8_t)(dlc >> 16U);
+  return (uint8_t)(dlc >> CAN_DLC_LEN_SHIFT);
 }
 
 /* Public API */
@@ -93,8 +95,8 @@ void can_bus_init(const can_bus_config_t *cfg) {
 }
 
 bool can_bus_transmit(uint32_t id, const uint8_t *data, uint8_t len) {
-  if (len > 8U) {
-    len = 8U;
+  if (len > CAN_MAX_PAYLOAD) {
+    len = CAN_MAX_PAYLOAD;
   }
 
   uint32_t head = s_can_bus.tx_head;
@@ -162,7 +164,7 @@ void HAL_FDCAN_RxFifo0MsgPendingCallback(FDCAN_HandleTypeDef *hfdcan) {
   (void)hfdcan;
 
   FDCAN_RxHeaderTypeDef hdr;
-  uint8_t raw[8] = { 0 };
+  uint8_t raw[CAN_MAX_PAYLOAD] = { 0 };
 
   if (HAL_FDCAN_GetRxMessage(&hfdcan2, FDCAN_RX_FIFO0, &hdr, raw) != HAL_OK) {
     return;
@@ -175,8 +177,8 @@ void HAL_FDCAN_RxFifo0MsgPendingCallback(FDCAN_HandleTypeDef *hfdcan) {
   }
 
   uint8_t len = can_bus_dlc_to_len(hdr.DataLength);
-  if (len > 8U) {
-    len = 8U;
+  if (len > CAN_MAX_PAYLOAD) {
+    len = CAN_MAX_PAYLOAD;
   }
 
   can_msg_t *slot = &s_can_bus.rx_buf[head & CAN_RX_BUF_MASK];
@@ -186,7 +188,7 @@ void HAL_FDCAN_RxFifo0MsgPendingCallback(FDCAN_HandleTypeDef *hfdcan) {
 
   s_can_bus.rx_head = next;
 
-  if (hdr.Identifier >= s_can_bus.cfg.base_dc && hdr.Identifier < s_can_bus.cfg.base_dc + 0x10U) {
+  if (hdr.Identifier >= s_can_bus.cfg.base_dc && hdr.Identifier < s_can_bus.cfg.base_dc + CAN_DC_FRAME_RANGE) {
     s_can_bus.last_dc_tick = HAL_GetTick();
   }
 }

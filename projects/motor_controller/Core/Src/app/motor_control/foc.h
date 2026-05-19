@@ -20,6 +20,7 @@
 #include "math_defs.h"
 #include "motor_config.h"
 #include "observer.h"
+#include "pi.h"
 
 /**
  * @defgroup Motor_Control
@@ -27,14 +28,19 @@
  * @{
  */
 
-/* ADC and current sense */
-#define ADC_VREF 3.3f
-#define ADC_SCALE (ADC_VREF / 4095.0f)
-#define CC6922SG_SENS 0.0132f
-
-/* Control loop (HRTIM_FREQ_HZ and HRTIM_PERIOD defined in hrtim.h user block) */
+/** Control loop period (s). HRTIM_FREQ_HZ is defined in the hrtim.h user block
+ */
 #define CONTROL_DT (1.0f / (float)HRTIM_FREQ_HZ)
-#define PWM_PERIOD HRTIM_PERIOD
+
+/**
+ * @brief   Current sense ADC channel layout
+ * @details DMA fills the buffers in this order from the phase shunt amplifiers
+ */
+enum {
+  ADC_CSA = 0,          /**< Phase A current sense amplifier */
+  ADC_CSC = 1,          /**< Phase C current sense amplifier */
+  ADC_CURRENT_COUNT = 2 /**< Number of current sense channels */
+};
 
 /**
  * @brief   Per phase measured currents
@@ -78,15 +84,6 @@ typedef struct {
 } foc_trig_t;
 
 /**
- * @brief   Per phase voltage commands
- */
-typedef struct {
-  float v_a; /**< Phase A voltage (V) */
-  float v_b; /**< Phase B voltage (V) */
-  float v_c; /**< Phase C voltage (V) */
-} v_abc_t;
-
-/**
  * @brief   Per phase PWM duty cycles
  */
 typedef struct {
@@ -94,17 +91,6 @@ typedef struct {
   float d_b; /**< Phase B duty (fraction of period) */
   float d_c; /**< Phase C duty (fraction of period) */
 } duty_t;
-
-/**
- * @brief   PI controller state
- */
-typedef struct {
-  float kp;         /**< Proportional gain */
-  float ki;         /**< Integral gain */
-  float integrator; /**< Integrator state */
-  float out_min;    /**< Output lower limit */
-  float out_max;    /**< Output upper limit */
-} pi_t;
 
 /**
  * @brief   FOC current and voltage commands
@@ -139,7 +125,6 @@ typedef struct {
   alpha_beta_t alpha_beta;         /**< Stationary frame current */
   direct_quadrature_t dq;          /**< Rotating frame current */
   volt_alpha_beta_t volt_ab;       /**< Stationary frame voltage */
-  v_abc_t v_abc;                   /**< Per phase voltage commands */
   duty_t duty;                     /**< Per phase PWM duty */
 
   foc_commands_t cmd; /**< Current and voltage commands */
@@ -151,8 +136,10 @@ typedef struct {
 
 extern motor_controller_t mc;
 
-extern volatile uint16_t current_buf[2];
-extern volatile uint16_t current_ref_buf[2];
+/** Raw phase current ADC samples, indexed by ADC_CSA / ADC_CSC */
+extern volatile uint16_t phase_current_adc[ADC_CURRENT_COUNT];
+/** Zero current ADC reference samples, indexed by ADC_CSA / ADC_CSC */
+extern volatile uint16_t phase_current_ref_adc[ADC_CURRENT_COUNT];
 
 /**
  * @brief   Initialize the motor controller and observer

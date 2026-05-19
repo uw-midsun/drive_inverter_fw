@@ -117,11 +117,6 @@ static void motor_interface_apply_calibration(const encoder_cal_data_t *cal) {
   s_mi.encoder_offset = cal->offset & ENCODER_MASK;
   s_mi.reverse_direction = cal->reverse ? 1 : 0;
   s_mi.lut_valid = cal->lut_valid ? 1 : 0;
-
-  /* if (lut_valid) { */
-  /*   for (int i = 0; i < LUT_SIZE; i++) */
-  /*     s_mi.lut[i] = cal->lut[i]; */
-  /* } */
 }
 
 void motor_interface_set_offset(uint16_t off) {
@@ -148,29 +143,20 @@ void motor_interface_load_calibration(void) {
 }
 
 void motor_interface_save_calibration(void) {
-  encoder_cal_data_t cal;
+  /* Zero init so struct padding is deterministic in the flashed image */
+  encoder_cal_data_t cal = { 0 };
 
-  if (s_mi.encoder_offset != cal.offset) {
-    printf("Saving calibration: offset = %u counts\r\n", s_mi.encoder_offset);
-    cal.offset = s_mi.encoder_offset;
-  }
+  cal.offset = s_mi.encoder_offset;
+  cal.reverse = s_mi.reverse_direction;
+  cal.lut_valid = s_mi.lut_valid;
 
-  if (s_mi.reverse_direction != cal.reverse) {
-    printf("Saving calibration: reverse = %u\r\n", s_mi.reverse_direction);
-    cal.reverse = s_mi.reverse_direction;
-  }
+  printf("Saving calibration: offset = %u counts, reverse = %u, lut_valid = %u\r\n", s_mi.encoder_offset, s_mi.reverse_direction, s_mi.lut_valid);
 
   if (s_mi.lut_valid) {
-    printf("Saving calibration: LUT:\r\n");
-    cal.lut_valid = s_mi.lut_valid;
-
     for (int i = 0; i < LUT_SIZE; i++) {
       printf("  LUT[%d] = %+6d\r\n", i, s_mi.lut[i]);
       cal.lut[i] = s_mi.lut[i];
     }
-  } else {
-    cal.lut_valid = 0;
-    printf("Saving calibration: lut_valid = %u\r\n", s_mi.lut_valid);
   }
 
   HAL_FLASH_Unlock();
@@ -212,13 +198,13 @@ uint16_t motor_interface_get_position(void) {
   raw = (raw - s_mi.encoder_offset) & ENCODER_MASK;
 
   if (s_mi.lut_valid) {
-    uint32_t idx = raw >> 5; /* 256 entry LUT */
-    uint32_t frac = raw & 0x1F;
+    uint32_t idx = raw >> LUT_INTERP_SHIFT;
+    uint32_t frac = raw & LUT_FRAC_MASK;
 
     int16_t o0 = s_mi.lut[idx];
-    int16_t o1 = s_mi.lut[(idx + 1) & 0xFF];
+    int16_t o1 = s_mi.lut[(idx + 1) & LUT_INDEX_MASK];
 
-    int32_t interp = o0 + (((int32_t)(o1 - o0) * frac) >> 5);
+    int32_t interp = o0 + (((int32_t)(o1 - o0) * (int32_t)frac) >> LUT_INTERP_SHIFT);
 
     raw = (raw + interp) & ENCODER_MASK;
   }

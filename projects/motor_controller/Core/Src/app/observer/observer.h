@@ -23,13 +23,6 @@
  * @{
  */
 
-/* Fusion of the sensorless and sensored estimates. The encoder correction
- * gain is scheduled against electrical speed (rad/s) */
-#define FUSION_SPEED_LOW 50.0f
-#define FUSION_SPEED_HIGH 300.0f
-#define FUSION_GAIN_MAX 0.8f
-#define FUSION_GAIN_MIN 0.0f
-
 /**
  * @brief   Fused position observer state
  */

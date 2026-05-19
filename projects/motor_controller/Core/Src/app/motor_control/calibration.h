@@ -25,9 +25,8 @@
 /**
  * @brief   Run the full mechanical calibration sweep and store the LUT
  * @param   Ud Direct axis voltage applied during the sweep (V)
- * @param   Vbus DC bus voltage (V)
  */
-void calibrate_run(float Ud, float Vbus);
+void calibrate_run(float Ud);
 
 /**
  * @brief   Run the encoder offset only calibration

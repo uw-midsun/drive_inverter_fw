@@ -15,6 +15,8 @@
 
 /* Intra-component Headers */
 #include "foc.h"
+#include "pi.h"
+#include "transform_utils.h"
 
 /**
  * @defgroup Motor_Control
@@ -22,20 +24,41 @@
  * @{
  */
 
+/* ADC counts to amps: (Vref / full scale) / sensor sensitivity */
+#define ADC_VREF 3.3f          /**< ADC reference voltage (V) */
+#define ADC_FULL_SCALE 4095.0f /**< 12 bit ADC full scale (counts) */
+#define ADC_SCALE (ADC_VREF / ADC_FULL_SCALE)
+#define CC6922SG_SENS 0.0132f /**< Current sensor sensitivity (V/A) */
+
+/* PWM compare register full count. HRTIM_PERIOD is set in the hrtim.h user
+ * block */
+#define PWM_PERIOD HRTIM_PERIOD
+
+#define MC_VBUS_DEFAULT 30.0f /**< Assumed bus voltage until measured (V) */
+
+#define PI_CURRENT_KP 1.0f   /**< d and q axis current loop proportional gain */
+#define PI_CURRENT_KI 200.0f /**< d and q axis current loop integral gain */
+
+#define CURRENT_LPF_ALPHA 0.5f   /**< Phase current first order low pass coefficient */
+#define PHASE_C_SENSE_SIGN -1.0f /**< Phase C current sensor polarity is reversed */
+
+#define SVPWM_SECTOR_COUNT 6 /**< Number of space vector sectors */
+#define SVPWM_COEFF_COUNT 4  /**< Per sector coefficients { A, B, C, D } */
+
 motor_controller_t mc = {
-  .vbus = 30.0f,
+  .vbus = MC_VBUS_DEFAULT,
   .mode = MC_DISABLED,
   .el_angle = 0.0f,
   .current_scale = ADC_SCALE / CC6922SG_SENS,
 };
 
-static float svpwm_coeffs[6][4] = { 0 }; /* SVPWM coeffs, computed at init */
+static float svpwm_coeffs[SVPWM_SECTOR_COUNT][SVPWM_COEFF_COUNT] = { 0 }; /* computed at init */
 
-volatile uint16_t current_buf[2] = { 0 };     /* [CSA, CSC] */
-volatile uint16_t current_ref_buf[2] = { 0 }; /* [CSA REF, CSC REF] */
+volatile uint16_t phase_current_adc[ADC_CURRENT_COUNT] = { 0 };
+volatile uint16_t phase_current_ref_adc[ADC_CURRENT_COUNT] = { 0 };
 
 static void foc_compute_svpwm_coeffs(void) {
-  /* SVPWM coeffs[6][4], each coeffs[s][0..3] = { A, B, C, D } where
+  /* svpwm_coeffs[s][0..3] = { A, B, C, D } where
    * A = 0.5 * cos(phi1), B = 0.5 * sin(phi1)
    * C = 0.5 * cos(phi2), D = 0.5 * sin(phi2)
    * phi1, phi2 are the two active vector angles for sector s
@@ -46,34 +69,29 @@ static void foc_compute_svpwm_coeffs(void) {
    *
    * cos and sin for the six active vector angles:
    * 0, 60, 120, 180, 240, 300 degrees */
-  const float cosv[6] = { 1.0f, 0.5f, -0.5f, -1.0f, -0.5f, 0.5f };
-  const float sinv[6] = { 0.0f, HALF_SQRT3_F, HALF_SQRT3_F, 0.0f, -HALF_SQRT3_F, -HALF_SQRT3_F };
+  const float cosv[SVPWM_SECTOR_COUNT] = { 1.0f, 0.5f, -0.5f, -1.0f, -0.5f, 0.5f };
+  const float sinv[SVPWM_SECTOR_COUNT] = { 0.0f, HALF_SQRT3_F, HALF_SQRT3_F, 0.0f, -HALF_SQRT3_F, -HALF_SQRT3_F };
 
-  for (int s = 0; s < 6; ++s) {
-    const float A = 0.5f * cosv[s];
-    const float B = 0.5f * sinv[s];
-    const float C = 0.5f * cosv[(s + 1) % 6];
-    const float D = 0.5f * sinv[(s + 1) % 6];
-
-    svpwm_coeffs[s][0] = A;
-    svpwm_coeffs[s][1] = B;
-    svpwm_coeffs[s][2] = C;
-    svpwm_coeffs[s][3] = D;
+  for (int s = 0; s < SVPWM_SECTOR_COUNT; ++s) {
+    const int next = (s + 1) % SVPWM_SECTOR_COUNT;
+    svpwm_coeffs[s][0] = 0.5f * cosv[s];
+    svpwm_coeffs[s][1] = 0.5f * sinv[s];
+    svpwm_coeffs[s][2] = 0.5f * cosv[next];
+    svpwm_coeffs[s][3] = 0.5f * sinv[next];
   }
 }
 
 void foc_init(void) {
   const float vmax = mc.vbus * INVERSE_SQRT3_F;
 
-  mc.pi_d.kp = 1.0f;
-  mc.pi_d.ki = 200.0f;
-  mc.pi_d.out_min = -vmax;
-  mc.pi_d.out_max = vmax;
-
-  mc.pi_q.kp = 1.0f;
-  mc.pi_q.ki = 200.0f;
-  mc.pi_q.out_min = -vmax;
-  mc.pi_q.out_max = vmax;
+  const pi_config_t current_pi = {
+    .kp = PI_CURRENT_KP,
+    .ki = PI_CURRENT_KI,
+    .out_min = -vmax,
+    .out_max = vmax,
+  };
+  pi_init(&mc.pi_d, &current_pi);
+  pi_init(&mc.pi_q, &current_pi);
 
   mc.cmd.id_ref = 0.0f;
   mc.cmd.iq_ref = 0.0f;
@@ -82,16 +100,12 @@ void foc_init(void) {
   observer_init(&mc.observer, MOTOR_RS, MOTOR_LS, MOTOR_FLUX_LINKAGE);
 }
 
-static void foc_get_phase_currents(void) {
-  const int16_t a_diff = (int16_t)(current_buf[0] - current_ref_buf[0]);
-  const int16_t c_diff = (int16_t)(current_buf[1] - current_ref_buf[1]);
+static void foc_read_phase_currents(void) {
+  const int16_t a_diff = (int16_t)(phase_current_adc[ADC_CSA] - phase_current_ref_adc[ADC_CSA]);
+  const int16_t c_diff = (int16_t)(phase_current_adc[ADC_CSC] - phase_current_ref_adc[ADC_CSC]);
 
-  const float alpha = 0.5f;
-  mc.phase_currents.i_a += alpha * ((float)a_diff * mc.current_scale - mc.phase_currents.i_a);
-  mc.phase_currents.i_c += alpha * ((float)c_diff * mc.current_scale * -1.0f - mc.phase_currents.i_c); /* C phase sensor polarity reversed */
-
-  /* mc.phase_currents.i_a = (float)a_diff * mc.current_scale; */
-  /* mc.phase_currents.i_c = (float)c_diff * mc.current_scale * -1.0f; */
+  mc.phase_currents.i_a += CURRENT_LPF_ALPHA * ((float)a_diff * mc.current_scale - mc.phase_currents.i_a);
+  mc.phase_currents.i_c += CURRENT_LPF_ALPHA * ((float)c_diff * mc.current_scale * PHASE_C_SENSE_SIGN - mc.phase_currents.i_c);
 
   mc.phase_currents.i_b = -(mc.phase_currents.i_a + mc.phase_currents.i_c);
 }
@@ -101,37 +115,17 @@ static void foc_update_trig(void) {
   mc.trig.cos_theta = cosf(mc.el_angle);
 }
 
-static void foc_clarke(void) {
-  mc.alpha_beta.i_alpha = mc.phase_currents.i_a;
-  mc.alpha_beta.i_beta = mc.phase_currents.i_a * INVERSE_SQRT3_F + mc.phase_currents.i_b * INVERSE_2SQRT3_F;
-}
-
-static void foc_park(void) {
-  mc.dq.id = mc.alpha_beta.i_alpha * mc.trig.cos_theta + mc.alpha_beta.i_beta * mc.trig.sin_theta;
-  mc.dq.iq = -mc.alpha_beta.i_alpha * mc.trig.sin_theta + mc.alpha_beta.i_beta * mc.trig.cos_theta;
-}
-
-static void foc_inverse_park(void) {
-  mc.volt_ab.v_alpha = mc.cmd.ud * mc.trig.cos_theta - mc.cmd.uq * mc.trig.sin_theta;
-  mc.volt_ab.v_beta = mc.cmd.ud * mc.trig.sin_theta + mc.cmd.uq * mc.trig.cos_theta;
-
-  /* Clamp to the circle: |V| <= Vbus/sqrt(3) */
+static void foc_clamp_voltage_vector(void) {
+  /* Clamp the commanded voltage vector to the circle |V| <= Vbus / sqrt(3) */
   const float vmax = mc.vbus * INVERSE_SQRT3_F;
   const float mag_sq = mc.volt_ab.v_alpha * mc.volt_ab.v_alpha + mc.volt_ab.v_beta * mc.volt_ab.v_beta;
   const float vmax_sq = vmax * vmax;
 
   if (mag_sq > vmax_sq) {
-    /* Fast inverse sqrt approximation (Quake algorithm) */
-    float inv_mag = 1.0f / sqrtf(mag_sq);
-    mc.volt_ab.v_alpha *= vmax * inv_mag;
-    mc.volt_ab.v_beta *= vmax * inv_mag;
+    const float scale = vmax / sqrtf(mag_sq);
+    mc.volt_ab.v_alpha *= scale;
+    mc.volt_ab.v_beta *= scale;
   }
-}
-
-static void foc_inverse_clarke(void) {
-  mc.v_abc.v_a = mc.volt_ab.v_alpha;
-  mc.v_abc.v_b = (-mc.volt_ab.v_alpha + SQRT3_F * mc.volt_ab.v_beta) / 2.0f;
-  mc.v_abc.v_c = (-mc.volt_ab.v_alpha - SQRT3_F * mc.volt_ab.v_beta) / 2.0f;
 }
 
 static void foc_svpwm(void) {
@@ -220,20 +214,6 @@ static void foc_svpwm(void) {
   mc.duty.d_c = Tc_frac;
 }
 
-static void foc_compute_duty(void) {
-  mc.duty.d_a = mc.v_abc.v_a / mc.vbus + 0.5f;
-  mc.duty.d_b = mc.v_abc.v_b / mc.vbus + 0.5f;
-  mc.duty.d_c = mc.v_abc.v_c / mc.vbus + 0.5f;
-
-  if (mc.duty.d_a < 0.01f) mc.duty.d_a = 0.005f;
-  if (mc.duty.d_b < 0.01f) mc.duty.d_b = 0.005f;
-  if (mc.duty.d_c < 0.01f) mc.duty.d_c = 0.005f;
-
-  if (mc.duty.d_a > 0.99f) mc.duty.d_a = 0.995f;
-  if (mc.duty.d_b > 0.99f) mc.duty.d_b = 0.995f;
-  if (mc.duty.d_c > 0.99f) mc.duty.d_c = 0.995f;
-}
-
 static void foc_write_duty(void) {
   uint16_t a_counts = (uint16_t)(mc.duty.d_a * PWM_PERIOD);
   uint16_t b_counts = (uint16_t)(mc.duty.d_b * PWM_PERIOD);
@@ -244,60 +224,35 @@ static void foc_write_duty(void) {
   __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_E, HRTIM_COMPAREUNIT_1, c_counts);
 }
 
-static float foc_pi_run(pi_t *pi, float error, float dt) {
-  const float P = pi->kp * error;
-  const float ki_dt = pi->ki * dt;
-
-  /* Dynamic integrator bounds so P + I stays within the output limits */
-  const float I_max = pi->out_max - P;
-  const float I_min = pi->out_min - P;
-
-  /* Integrate then clamp to the dynamic bounds (branchless clamp) */
-  float I = pi->integrator + ki_dt * error;
-  if (I > I_max)
-    I = I_max;
-  else if (I < I_min)
-    I = I_min;
-
-  pi->integrator = I;
-
-  /* Output (guaranteed within bounds by the dynamic integrator clamp) */
-  float out = P + I;
-
-  return out;
-}
-
 void foc_step(const float dt, float encoder_el_angle) {
-  foc_get_phase_currents();
-  foc_clarke();
+  foc_read_phase_currents();
+  clarke_transform(mc.phase_currents.i_a, mc.phase_currents.i_b, &mc.alpha_beta.i_alpha, &mc.alpha_beta.i_beta);
 
   observer_step(&mc.observer, mc.alpha_beta.i_alpha, mc.alpha_beta.i_beta, encoder_el_angle, dt);
   mc.el_angle = mc.observer.theta_est;
 
   foc_update_trig();
-  foc_park();
+  park_transform(mc.alpha_beta.i_alpha, mc.alpha_beta.i_beta, mc.trig.sin_theta, mc.trig.cos_theta, &mc.dq.id, &mc.dq.iq);
 
   const float err_d = mc.cmd.id_ref - mc.dq.id;
   const float err_q = mc.cmd.iq_ref - mc.dq.iq;
 
-  mc.cmd.ud = foc_pi_run(&mc.pi_d, err_d, dt);
-  mc.cmd.uq = foc_pi_run(&mc.pi_q, err_q, dt);
+  mc.cmd.ud = pi_run(&mc.pi_d, err_d, dt);
+  mc.cmd.uq = pi_run(&mc.pi_q, err_q, dt);
 
-  foc_inverse_park();
+  inverse_park_transform(mc.cmd.ud, mc.cmd.uq, mc.trig.sin_theta, mc.trig.cos_theta, &mc.volt_ab.v_alpha, &mc.volt_ab.v_beta);
+  foc_clamp_voltage_vector();
 
   observer_update_voltage(&mc.observer, mc.volt_ab.v_alpha, mc.volt_ab.v_beta);
 
-  /* foc_inverse_clarke(); */
-  /* foc_compute_duty(); */
   foc_svpwm();
   foc_write_duty();
 }
 
 void foc_open_loop_step(void) {
   foc_update_trig();
-  foc_inverse_park();
-  /* foc_inverse_clarke(); */
-  /* foc_compute_duty(); */
+  inverse_park_transform(mc.cmd.ud, mc.cmd.uq, mc.trig.sin_theta, mc.trig.cos_theta, &mc.volt_ab.v_alpha, &mc.volt_ab.v_beta);
+  foc_clamp_voltage_vector();
   foc_svpwm();
   foc_write_duty();
 }

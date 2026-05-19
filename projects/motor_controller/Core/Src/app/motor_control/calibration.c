@@ -24,13 +24,16 @@
  * @{
  */
 
+#define CALIB_OFFSET_SETTLE_MS 1000 /**< Initial rotor settle before the offset sweep (ms) */
+#define CALIB_SWEEP_STEP_MS 250     /**< Per step settle during the full sweep (ms) */
+
 static int16_t calibrate_wrap_diff(int32_t diff) {
   /* Bring into [0, ENCODER_COUNTS) */
-  diff %= ENCODER_COUNTS;
-  if (diff < 0) diff += ENCODER_COUNTS;
+  diff %= (int32_t)ENCODER_COUNTS;
+  if (diff < 0) diff += (int32_t)ENCODER_COUNTS;
 
   /* Now map to [-ENCODER_COUNTS/2, +ENCODER_COUNTS/2) */
-  if (diff > (ENCODER_COUNTS / 2)) diff -= ENCODER_COUNTS;
+  if (diff > (int32_t)(ENCODER_COUNTS / 2U)) diff -= (int32_t)ENCODER_COUNTS;
 
   return (int16_t)diff;
 }
@@ -44,7 +47,7 @@ void calibrate_offset(const float Ud, const uint16_t steps, const uint16_t delay
   int16_t offset = 0;
   mc.el_angle = -PI2_F * POLE_PAIRS / steps;
   foc_open_loop_step();
-  HAL_Delay(1000);
+  HAL_Delay(CALIB_OFFSET_SETTLE_MS);
 
   for (uint16_t i = 0; i < steps; i++) {
     float theta_elec = (PI2_F * i * POLE_PAIRS) / steps;
@@ -69,8 +72,10 @@ void calibrate_offset(const float Ud, const uint16_t steps, const uint16_t delay
   motor_interface_set_offset((offset_avg + ENCODER_COUNTS) & ENCODER_MASK);
 }
 
-void calibrate_run(const float Ud, const float Vbus) {
+void calibrate_run(const float Ud) {
   printf("\r\n=== BEGIN FULL MECHANICAL CALIBRATION ===\r\n");
+
+  mc.cmd.ud = Ud;
 
   uint16_t raw_samples[CAL_SAMPLES];
   int16_t diff_samples[CAL_SAMPLES];
@@ -82,14 +87,12 @@ void calibrate_run(const float Ud, const float Vbus) {
     mc.el_angle = theta_elec;
 
     foc_open_loop_step();
-    HAL_Delay(250); /* shorter delay is OK with oversampling */
+    HAL_Delay(CALIB_SWEEP_STEP_MS); /* shorter delay is OK with oversampling */
 
     uint16_t raw = motor_interface_get_position_raw();
     raw_samples[i] = raw;
 
-    /* Mechanical angle for the commanded position */
-    /* float theta_mech = (2.0f * PI_F * i) / CAL_SAMPLES; */
-    /* float cpr = (float)ENCODER_COUNTS / (2.0f * PI_F); */
+    /* Commanded encoder counts for this electrical angle */
     uint16_t cmd = (uint16_t)lroundf(theta_elec * (ENCODER_COUNTS / (2.0f * PI_F)));
 
     int32_t diff32 = (int32_t)raw - (int32_t)cmd;
@@ -104,7 +107,6 @@ void calibrate_run(const float Ud, const float Vbus) {
   int32_t sum = 0;
   for (int i = 0; i < CAL_SAMPLES; i++) sum += diff_samples[i];
   int16_t avg = sum / CAL_SAMPLES;
-  /* motor_interface_set_offset((avg + ENCODER_COUNTS) & ENCODER_MASK); */
 
   printf("\r\nGlobal offset (avg diff) = %+6d\r\n", avg);
 
